@@ -38,7 +38,17 @@
     group: haproxy
     mode: 0400
   notify: restart haproxy
-  no_log: yes
+  #no_log: yes
+  ignore_errors: '{{ ansible_check_mode }}'
+
+- name: template /etc/haproxy/crt-list.txt
+  template:
+    src: "etc/haproxy/crt-list.txt.j2"
+    dest: "/etc/haproxy/crt-list.txt.j2"
+    owner: root
+    group: root
+    mode: 0600
+  notify: restart haproxy
 
 - name: template /etc/haproxy/haproxy.cfg
   template:
