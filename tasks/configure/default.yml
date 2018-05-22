@@ -41,27 +41,6 @@
   #no_log: yes
   ignore_errors: '{{ ansible_check_mode }}'
 
-- name: template /etc/haproxy/crt-list.txt
-  template:
-    src: "etc/haproxy/crt-list.txt.j2"
-    dest: "/etc/haproxy/crt-list.txt"
-    owner: root
-    group: root
-    mode: 0600
-  notify: restart haproxy
-
-- name: template redirect domain collection files
-  template:
-    src: "etc/haproxy/redirect-template.txt.j2"
-    dest: "/etc/haproxy/redirect-{{ haproxy_redirect_domain['name'] }}.txt"
-    owner: root
-    group: root
-    mode: 0600
-  notify: restart haproxy
-  with_items: "{{ haproxy_redirect_domains }}"
-  loop_control:
-    loop_var: haproxy_redirect_domain
-
 - name: template /etc/haproxy/haproxy.cfg
   template:
     src: "etc/haproxy/haproxy.cfg.j2"
