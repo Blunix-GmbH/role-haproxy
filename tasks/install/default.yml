@@ -2,7 +2,7 @@
 - name: install haproxy related packages
   apt:
     pkg: "{{ haproxy_package }}"
-    state: installed
+    state: present
     update_cache: no
   with_items: ['haproxy', 'hatop', 'haveged']
   loop_control:

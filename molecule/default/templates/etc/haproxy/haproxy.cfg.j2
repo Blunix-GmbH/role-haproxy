@@ -17,6 +17,7 @@ global
   ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
   ssl-default-server-options no-sslv3 no-tls-tickets
 
+
 defaults
   log global
   mode  http
@@ -36,51 +37,34 @@ defaults
 frontend http
   mode    http
   bind    :80
-  bind    :443 ssl crt-list /etc/haproxy/crt-list.txt
+  bind    :443 ssl crt /var/lib/haproxy/ssl/www.example.com.pem crt /var/lib/haproxy/ssl/www.beispiel.de.pem
   redirect scheme https code 301 if !{ ssl_fc }
   http-response set-header Strict-Transport-Security max-age=15768000
-  default_backend www_example_de
+  default_backend www_beispiel_de
   # Redirect everything to https
   redirect scheme https code 301 if !{ ssl_fc }
   # Define hosts
-  acl host_www_example_de hdr(host) -i www.example.de # TODO MOVE ME TO FILES https://serverfault.com/questions/604041/direct-several-subdomains-to-a-single-backend-with-haproxy/604342
-  acl host_backend_example_de hdr(host) -i backend.example.de
-	acl host_www_example-realestate_com hdr(host) -i www.example-realestate.com
-  ## figure out which one to use
-  use_backend www_example_de if host_www_example_de
-  use_backend backend_example_de if host_backend_example_de
-	use_backend www_example-realestate_com if host_www_example-realestate_com
+  acl host_www_beispiel_de hdr(host) -i www.beispiel.de
+  acl host_www_example_com hdr(host) -i www.example.com
+  ## Determine which host to use
+  use_backend www_beispiel_de if host_www_beispiel_de
+  use_backend www_example_com if host_www_example_com
 
-backend www_example_de
+
+backend www_beispiel_de
   balance leastconn
   option httpclose
   option forwardfor
   cookie JSESSIONID prefix
-  option httpchk HEAD / HTTP/1.1\r\nHost:\ www.example.de\r\nUser-agent:\ haproxy0
+  option httpchk HEAD / HTTP/1.1\r\nHost:\ www.beispiel.de\r\nUser-agent:\ haproxy0
   http-check expect status 200
-  server web0 10.0.3.10:80 cookie A check
-  server web1 10.0.3.11:80 cookie A check
-  server web2 10.0.4.10:80 cookie A check
-  server web3 10.0.4.11:80 cookie A check
-  server web4 10.0.5.10:80 cookie A check
-  server web5 10.0.5.11:80 cookie A check
+  server web0 127.0.0.1:8080 cookie A check
 
-backend backend_example_de
+backend www_example_com
   balance leastconn
   option httpclose
   option forwardfor
   cookie JSESSIONID prefix
-	option httpchk HEAD /login HTTP/1.1\r\nHost:\ backend.example.de\r\nUser-agent:\ haproxy0
+	option httpchk HEAD /login HTTP/1.1\r\nHost:\ www.example.com\r\nUser-agent:\ haproxy0
   http-check expect status 200 string pong
-  server back0 10.0.3.20:80 cookie A check
-  server back1 10.0.4.20:80 cookie A check
-
-	backend www_example-realestate_com
-	  balance leastconn
-	  option httpclose
-	  option forwardfor
-	  cookie JSESSIONID prefix
-		option httpchk HEAD / HTTP/1.1\r\nHost:\ www.example-realestate.com\r\nUser-agent:\ haproxy0
-	  http-check expect status 200 string pong
-	  server real0 10.0.3.40:80 cookie A check
-	  server real1 10.0.4.40:80 cookie A check
+  server back0 127.0.0.1:8080 cookie A check

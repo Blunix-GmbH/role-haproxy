@@ -1,0 +1,217 @@
+---
+# Preparations for running the tests later
+# Install nginx and make it listen on localhost:8080 and make it respond with the host header
+# Also setup www.example.com and wwww.beispiel.de in /etc/hosts for being able to curl them
+- name: Converge
+  hosts: all
+  become: yes
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+  tasks:
+    - name: install nginx and python-requests
+      apt:
+        pkg: "{{ haproxy_tests_package }}"
+        state: present
+      with_items:
+        - nginx
+        - python-requests
+      loop_control:
+        loop_var: haproxy_tests_package
+    - name: template /etc/nginx/sites-enabled/default
+      copy:
+        dest: /etc/nginx/sites-enabled/default
+        content: |
+          server {
+              server_name _;
+              listen 8080;
+              location / {
+                  return 200 $host ;
+                  add_header Content-Type text/plain;
+              }
+            }
+      notify: restart nginx
+    - name: put www.example.com and www.beispiel.de into /etc/hosts
+      lineinfile:
+        dest: /etc/hosts
+        line: '127.0.0.1 www.beispiel.de www.example.com'
+        state: present
+
+
+# Most minimal mode of using role-haproxy - just installs the haproxy package and generates a dhparam
+- name: Converge
+  hosts: all
+  become: yes
+  roles:
+    - role: role-haproxy
+  vars:
+    # You will have to setup your own magic to make the certificate available for your haproxy.cfg
+    # This will however still create a dhparam (because you need one in any cases)
+    haproxy_ssl_managed_mode: False
+    haproxy_dhparam_size: 512
+
+
+# Install haproxy and create a concatinated ssl chain file from variables to use it in haproxy.cfg
+- name: Converge
+  hosts: all
+  become: yes
+  roles:
+    - role: role-haproxy
+  vars:
+    haproxy_dhparam_size: 512
+    haproxy_ssl_managed_mode: variables
+    # All variables below are required for haproxy_ssl_managed_mode: variables
+    haproxy_ssl_chain_filename: www.beispiel.de
+    haproxy_ssl_crt: |
+      -----BEGIN CERTIFICATE-----
+      MIICxjCCAa6gAwIBAgIJANOdhNMaK3O9MA0GCSqGSIb3DQEBCwUAMBsxGTAXBgNV
+      BAMMEHVidW50dS5mcml0ei5ib3gwHhcNMTcxMjI2MTYxNzExWhcNMjcxMjI0MTYx
+      NzExWjAbMRkwFwYDVQQDDBB1YnVudHUuZnJpdHouYm94MIIBIjANBgkqhkiG9w0B
+      AQEFAAOCAQ8AMIIBCgKCAQEAu9avwW1suN4X6hYRMQnxCLheE4DQVQliwx5J/KWy
+      wFJprFcW/KQXa9CDUTYG7bjYRgurYfc7tHIcweWxa+TvRpmuYy2EkLszte6YJPtn
+      3LM5Z7wZQ8UNAOoEHcdTwYJv3bGzML0daFVIiFwqZSeG7p65g7oQPd7odWhYKpTY
+      rZPz+4mQ83D0FAFtq4YT5bM6gk+qm7xUKdZXESG8SU7lEcMZOxJGHfLWXq6e9G98
+      VFUxBXxnJo0yMaAJSmerjqKLsb4VYErNHhg4a34cTaNarOrFxEk9jmn1l5JCXBK8
+      VOu0QJwkjQ7UTINeki0wm/zz7PKJfUaTq+KxzOmfL44gdwIDAQABow0wCzAJBgNV
+      HRMEAjAAMA0GCSqGSIb3DQEBCwUAA4IBAQCS8pbEdGKylN97xcJNCnd26I7MdCLy
+      pqQ5b2zoY4wk6L2HhR+CsXfmq+YVqfgjgSH0dCf9F6+RM/3Qdns0OqSgBFqBuehR
+      qCLhB9P2TqtgjExBdUEnis+mT2bfvSyq6q6+DEoPP7QndU0xWrHFA0a0h3Itk2Go
+      lo19wWaYjYwPpmUfF4ACagGgGYpVjpozOay7xT1ghETTahcoI1vMA2kXduFb+iBw
+      rujw5gqqFTCF5gLYh5TCKVBEJT/nlPPpd+0Af9gjGDPIqy8R4AwSODauvPbjipn9
+      ZwVRo2UmAMzAOoTO7bxbUVs3rF96xN9CcSRtVMe7okTb2hbh++jwbI0I
+      -----END CERTIFICATE-----
+    haproxy_ssl_key: |
+      -----BEGIN PRIVATE KEY-----
+      MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC71q/BbWy43hfq
+      FhExCfEIuF4TgNBVCWLDHkn8pbLAUmmsVxb8pBdr0INRNgbtuNhGC6th9zu0chzB
+      5bFr5O9Gma5jLYSQuzO17pgk+2fcszlnvBlDxQ0A6gQdx1PBgm/dsbMwvR1oVUiI
+      XCplJ4bunrmDuhA93uh1aFgqlNitk/P7iZDzcPQUAW2rhhPlszqCT6qbvFQp1lcR
+      IbxJTuURwxk7EkYd8tZerp70b3xUVTEFfGcmjTIxoAlKZ6uOoouxvhVgSs0eGDhr
+      fhxNo1qs6sXEST2OafWXkkJcErxU67RAnCSNDtRMg16SLTCb/PPs8ol9RpOr4rHM
+      6Z8vjiB3AgMBAAECggEBAJit+pJI9XSW4e1eHn8zy34BDkbgD3bveB2NQypfLRpy
+      Yn65E3ArmPYDuJmMRrl35CObXKT2pssXbhSVNU+z+GH0jPEEkJpr765Tz8tPpq6X
+      53NQS2DwjI9PqCTkXkoOUgtrY3GcZojluV1NPRCXvm+7CKPv2z/PLjgwpmmGL1F2
+      agiv2ZpvdupqfBpogoI2YMNL9XFXJfYtrrKKQELmx1BR+yForz/3sHxM7wpJLX57
+      VPWKd+mP+XFetVAG7rUxKmY6Bsq9LlEe/VO+qSvM3/bhnkZQQ9wMKMpGcs7yP3/I
+      XlDwEGm3z5fFjBiimekHMS9ODsZrBNzQqdUrk5/WWqECgYEA7AioCuZyql90uvsW
+      EXqoozKs1y2N5QCrOyKNrC60UZm5hbj+i0UTwVeNXUnWaYmL5XK7W3RTVUjyRmbO
+      RRt8SDob6p0qbqxpnVcedFD5Zulj3aKvFHvpbtQYTO2y3UpKzv3Snb/e6p2YFLfx
+      ehTpzJSQg9l2Sz8pzg93NrGAsQkCgYEAy7pbVlkSdyOVYlzB87MYCGGdkxNjnhZD
+      s1Rx96WeSPcuOidbF2la860hpOX8XrbeE+jMV3tnL35KDw5UlDWKeV783XQ1DqYO
+      17vS4g6R2RB/R4Pnts9u+0fZM96rTyEyXSNFAey9h9w9tP1yNQP/qSUeh8HF+6Fb
+      SmGQi7YgJX8CgYEAvEUvXPpyTimz3412Dd0r9HjwWvbQLvD4pEOsg8IBPPGEhQCJ
+      sScZWefvL5E9AJOhThTVE17XNbjo33UTZRZGbQpEyEAy33KRD9q0xQzt0sOpT9l7
+      E7i++xMciwgy2sZuo2rc+81XDwdDjosmhz11PCTonPLxo5WvT9kQO0UcpJkCgYEA
+      xjXPu5j5oDRcmNCKWyH51d2zQ27v0tTylT0pjLnz4CWtMiMsOwDj3oSpYRfpi/T6
+      5//tH4gOgmSqhS96FqBo02EZQBRZsqDZfAdfS1TFjZzBWMD65h+3aH8k0ZRos5om
+      t/sinpbIZ7Bd0QNs5Cu5x8U3iPl8OC9q9FksGuHdMN0CgYAzbWvJUPAlDdM6ZV83
+      B74AFFKH3KKsICrV9ybYDBYPGqb1X5u7DIxIWF30Xs6SAIhlNokTiyTv6CezMVxL
+      o0+e+F+2w9YMxEdYTM+eKX1+gp3M2uudtu2iYMAczprjch2qWB9/55Y/4cxvz+OZ
+      MJaUOF9O/fq9/THSI22Hg2N71g==
+      -----END PRIVATE KEY-----
+    # haproxy_ssl_intermediate: |
+      # -----BEGIN CERTIFICATE-----
+      # -----END CERTIFICATE-----
+    haproxy_ssl_intermediate: False
+
+
+# Install haproxy, create a concatinated chain file from files present on the server (generated
+# self signed certificates) and setup a haproxy.cfg
+- name: Converge
+  hosts: all
+  become: yes
+  roles:
+    - role: role-haproxy
+  vars:
+
+    # Location of your haproxy.cfg.j2 template file
+    # You have to specify this, as the template has to be in your playbook
+    haproxy_config_template_path: templates/etc/haproxy/haproxy.cfg.j2
+
+    # This role will alwyas generate the dhparam in /etc/haproxy/ssl/dhparam{{ haproxy_dhparam_size }}.pem
+    haproxy_dhparam_size: 512
+
+    # This variable defines how to manage the ssl certificate files required for haproxy. It needs
+    # to have a key, certificate, intermediates and dhparam concatinated into one file. Options:
+    # concatinate: concatinates files available on the server
+    # variables:   creates a new file from varibales given in this play
+    # False:       does nothing (default)
+    haproxy_ssl_managed_mode: concatinate
+
+    # This will create /etc/haproxy/ssl/{{ haproxy_ssl_chain_filename }}.pem from all the collected certs
+    # Required for haproxy_ssl_managed_mode: concatinate and variables
+    haproxy_ssl_chain_filename: www.example.com
+
+    # These variables are required only for the concatinate mode
+    # haproxy_ssl_crt_path: /etc/letsencrypt/live/example.com/cert.pem
+    # haproxy_ssl_key_path: /etc/letsencrypt/live/example.com/privkey.pem
+    # haproxy_ssl_intermediate_path: /etc/letsencrypt/live/example.com/chain.pem
+    haproxy_ssl_crt_path: /etc/ssl/certs/snakeoil.crt
+    haproxy_ssl_key_path: /etc/ssl/private/snakeoil.key
+    # Omit intermediates in the concatinated file - only works for haproxy_ssl_intermediate_path
+    haproxy_ssl_intermediate_path: False
+
+    # Some variables custom to the example haproxy.cfg.j2 template
+    # A list of error files
+    haproxy_errorfiles:
+      - code: 503
+        path: /etc/haproxy/errors/503.html
+
+  pre_tasks:
+
+    # Prepare a snakeoil cert for haproxy to use
+    # only required in molecule
+    - name: install python-openssl
+      apt:
+        name: python-openssl
+        state: present
+
+    - name: generate an openssl private key
+      openssl_privatekey:
+        path: /etc/ssl/private/snakeoil.key
+
+    - name: generate an openssl certificate signing request
+      openssl_csr:
+        path: /etc/ssl/private/snakeoil.csr
+        privatekey_path: /etc/ssl/private/snakeoil.key
+        common_name: "www.example.com"
+
+    - name: generate an openssl self signed certificate
+      openssl_certificate:
+        path: /etc/ssl/certs/snakeoil.crt
+        privatekey_path: /etc/ssl/private/snakeoil.key
+        csr_path: /etc/ssl/private/snakeoil.csr
+        provider: selfsigned
+
+  post_tasks:
+
+    - name: create directory for error files
+      file:
+        state: directory
+        path: /etc/haproxy/errors/
+        owner: www-data
+        group: www-data
+        mode: 0750
+
+    - name: manage error files
+      template:
+        src: "templates/{{ haproxy_errorfile['path'] }}"
+        dest: "{{ haproxy_errorfile['path'] }}"
+        owner: www-data
+        group: www-data
+        mode: 0640
+      with_items: "{{ haproxy_errorfiles }}"
+      loop_control:
+        loop_var: haproxy_errorfile
+
+    - name: template /etc/haproxy/haproxy.cfg
+      template:
+        src: "etc/haproxy/haproxy.cfg.j2"
+        dest: "/etc/haproxy/haproxy.cfg"
+        owner: root
+        group: root
+        mode: 0600
+        validate: haproxy -f %s -c -q
+      notify: restart haproxy

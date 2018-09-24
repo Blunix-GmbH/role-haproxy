@@ -9,13 +9,13 @@
 # TODO bugs around, says it cant find the module, https://docs.ansible.com/ansible/devel/modules/openssl_dhparam_module.html
 #- name: create openssl dhparam (may take a while)
 #  openssl_dhparam:
-#    path: /var/lib/haproxy/ssl/dh4096.pem
-#    size: 4096
-- name: create openssl dhparam (may take a while - could be an hour or so)
+#    path: "/var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
+#    size: "{{ haproxy_dhparam_size }}"
+- name: create openssl dhparam (may take a while)
   command: "openssl dhparam -outform PEM -out /var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem {{ haproxy_dhparam_size }}"
   args:
     creates: "/var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
-  no_log: yes
+  no_log: "{{ haproxy_no_log }}"
 
 - name: set permissions on dhparam
   file:
@@ -27,26 +27,55 @@
 
 - name: load openssl dhparam into a variable
   command: "cat /var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
-  register: haproxy_ssl_dhparam
-  no_log: yes
+  register: haproxy_ssl_dhparam_out
+  no_log: "{{ haproxy_no_log }}"
+- name: load openssl dhparam into a variable
+  set_fact:
+    haproxy_ssl_dhparam: "{{ haproxy_ssl_dhparam_out.stdout }}"
 
+
+# haproxy_ssl_managed_mode: concatinate
+# load all present ssl files content into variables
+- name: cat ssl key file
+  command: "cat {{ haproxy_ssl_key_path }}"
+  register: haproxy_ssl_key_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_managed_mode == 'concatinate'
+- name: load ssl file key into a variable
+  set_fact:
+    haproxy_ssl_key: "{{ haproxy_ssl_key_out.stdout }}"
+  when: haproxy_ssl_managed_mode == 'concatinate'
+
+- name: cat ssl certificate file
+  command: "cat {{ haproxy_ssl_crt_path }}"
+  register: haproxy_ssl_crt_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_managed_mode == 'concatinate'
+- name: load ssl certificate file into a variable
+  set_fact:
+    haproxy_ssl_crt: "{{ haproxy_ssl_crt_out.stdout }}"
+  when: haproxy_ssl_managed_mode == 'concatinate'
+
+- name: cat ssl intermediate file
+  command: "cat {{ haproxy_ssl_intermediate_path }}"
+  register: haproxy_ssl_intermediate_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_intermediate_path != False and haproxy_ssl_managed_mode == 'concatinate'
+- name: load ssl intermediate into a variable
+  set_fact:
+    haproxy_ssl_intermediate: "{{ haproxy_ssl_intermediate_out.stdout }}"
+  when: haproxy_ssl_intermediate_path != False and haproxy_ssl_managed_mode == 'concatinate'
+
+
+# template the concatinated ssl file from variables loaded from files or given in the play
 - name: template ssl certificate chain file
   template:
-    src: "var/lib/haproxy/ssl/certificate-template.pem.j2"
-    dest: "/var/lib/haproxy/ssl/{{ haproxy_certificate_filename }}.pem"
+    src: "templates/var/lib/haproxy/ssl/certificate-template.pem.j2"
+    dest: "/var/lib/haproxy/ssl/{{ haproxy_ssl_chain_filename }}.pem"
     owner: haproxy
     group: haproxy
     mode: 0400
   notify: restart haproxy
-  #no_log: yes
-  ignore_errors: '{{ ansible_check_mode }}'
-
-- name: template /etc/haproxy/haproxy.cfg
-  template:
-    src: "etc/haproxy/haproxy.cfg.j2"
-    dest: "/etc/haproxy/haproxy.cfg"
-    owner: root
-    group: root
-    mode: 0600
-    validate: haproxy -f %s -c -q
-  notify: restart haproxy
+  no_log: "{{ haproxy_no_log }}"
+  # ignore_errors: '{{ ansible_check_mode }}'
+  when: haproxy_ssl_managed_mode != False
