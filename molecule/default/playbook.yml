@@ -1,46 +1,5 @@
 ---
-# Preparations for running the tests later
-# Install nginx and make it listen on localhost:8080 and make it respond with the host header
-# Also setup www.example.com and wwww.beispiel.de in /etc/hosts for being able to curl them
-- name: Converge
-  hosts: all
-  become: yes
-  handlers:
-    - name: restart nginx
-      service:
-        name: nginx
-        state: restarted
-  tasks:
-    - name: install nginx and python-requests
-      apt:
-        pkg: "{{ haproxy_tests_package }}"
-        state: present
-      with_items:
-        - nginx
-        - python-requests
-      loop_control:
-        loop_var: haproxy_tests_package
-    - name: template /etc/nginx/sites-enabled/default
-      copy:
-        dest: /etc/nginx/sites-enabled/default
-        content: |
-          server {
-              server_name _;
-              listen 8080;
-              location / {
-                  return 200 $host ;
-                  add_header Content-Type text/plain;
-              }
-            }
-      notify: restart nginx
-    - name: put www.example.com and www.beispiel.de into /etc/hosts
-      lineinfile:
-        dest: /etc/hosts
-        line: '127.0.0.1 www.beispiel.de www.example.com'
-        state: present
-
-
-# Most minimal mode of using role-haproxy - just installs the haproxy package and generates a dhparam
+# Most minimal usage of role-haproxy - just installs the haproxy package and generate a dhparam
 - name: Converge
   hosts: all
   become: yes
@@ -50,6 +9,7 @@
     # You will have to setup your own magic to make the certificate available for your haproxy.cfg
     # This will however still create a dhparam (because you need one in any cases)
     haproxy_ssl_managed_mode: False
+    # This role will alwyas generate the dhparam in /etc/haproxy/ssl/dhparam{{ haproxy_dhparam_size }}.pem
     haproxy_dhparam_size: 512
 
 
@@ -66,50 +26,89 @@
     haproxy_ssl_chain_filename: www.beispiel.de
     haproxy_ssl_crt: |
       -----BEGIN CERTIFICATE-----
-      MIICxjCCAa6gAwIBAgIJANOdhNMaK3O9MA0GCSqGSIb3DQEBCwUAMBsxGTAXBgNV
-      BAMMEHVidW50dS5mcml0ei5ib3gwHhcNMTcxMjI2MTYxNzExWhcNMjcxMjI0MTYx
-      NzExWjAbMRkwFwYDVQQDDBB1YnVudHUuZnJpdHouYm94MIIBIjANBgkqhkiG9w0B
-      AQEFAAOCAQ8AMIIBCgKCAQEAu9avwW1suN4X6hYRMQnxCLheE4DQVQliwx5J/KWy
-      wFJprFcW/KQXa9CDUTYG7bjYRgurYfc7tHIcweWxa+TvRpmuYy2EkLszte6YJPtn
-      3LM5Z7wZQ8UNAOoEHcdTwYJv3bGzML0daFVIiFwqZSeG7p65g7oQPd7odWhYKpTY
-      rZPz+4mQ83D0FAFtq4YT5bM6gk+qm7xUKdZXESG8SU7lEcMZOxJGHfLWXq6e9G98
-      VFUxBXxnJo0yMaAJSmerjqKLsb4VYErNHhg4a34cTaNarOrFxEk9jmn1l5JCXBK8
-      VOu0QJwkjQ7UTINeki0wm/zz7PKJfUaTq+KxzOmfL44gdwIDAQABow0wCzAJBgNV
-      HRMEAjAAMA0GCSqGSIb3DQEBCwUAA4IBAQCS8pbEdGKylN97xcJNCnd26I7MdCLy
-      pqQ5b2zoY4wk6L2HhR+CsXfmq+YVqfgjgSH0dCf9F6+RM/3Qdns0OqSgBFqBuehR
-      qCLhB9P2TqtgjExBdUEnis+mT2bfvSyq6q6+DEoPP7QndU0xWrHFA0a0h3Itk2Go
-      lo19wWaYjYwPpmUfF4ACagGgGYpVjpozOay7xT1ghETTahcoI1vMA2kXduFb+iBw
-      rujw5gqqFTCF5gLYh5TCKVBEJT/nlPPpd+0Af9gjGDPIqy8R4AwSODauvPbjipn9
-      ZwVRo2UmAMzAOoTO7bxbUVs3rF96xN9CcSRtVMe7okTb2hbh++jwbI0I
+      MIIFkzCCA3ugAwIBAgIJAPoHRB5deMfUMA0GCSqGSIb3DQEBCwUAMF8xCzAJBgNV
+      BAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYDVQQKDBhJbnRlcm5ldCBX
+      aWRnaXRzIFB0eSBMdGQxGDAWBgNVBAMMD3d3dy5iZWlzcGllbC5kZTAgFw0xODA5
+      MjQyMzIxNTlaGA8yMTE4MDgzMTIzMjE1OVowXzELMAkGA1UEBhMCQVUxEzARBgNV
+      BAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGEludGVybmV0IFdpZGdpdHMgUHR5IEx0
+      ZDEYMBYGA1UEAwwPd3d3LmJlaXNwaWVsLmRlMIICIjANBgkqhkiG9w0BAQEFAAOC
+      Ag8AMIICCgKCAgEAs+r89ZDS2nqWc2qRwA6jNa77Hmtdk7SsyxR0Ry7VudkfaQmC
+      zo9Bz3P357iix0EF7oQFKAQXvqQQ2EiJfrKVXbMg90NauidFpv9CVgbpPAAI3Y2D
+      YJIgRY02b8JH/TNY3E754ZJzRLvgEGRPsN7nhs1uydF/C7o9AYidbiFVNM4A1CLT
+      /57Yvw6Zt5PKXL1Rit2h9q618wSZTMtAYlHqB4xo44vqXf5cH3R0vZM2o3XqxF4r
+      fvaDZfsk+H7iIV+MvUguDZViBZIasc6zzEFbX0T1OaQXYk7a8orLm492DhkFC6Iv
+      CPvCkTloP7KiXZ7kw9eplDMMZ2NdJNgbPib39VcCcoDhstfkJfx8zCNa80Xf70Gb
+      YSNE8lbFTwn+2W/w5/CsuZYVK9oJRzWNLX0ynnBL1wQhik1QeTcehPI+1EqFbjty
+      G+RLGUzIoFEPEBhf0Qe7Qm98iZanbAtXDxeV399ne+gprg2Mx2OVzr72F2wkj67I
+      e9hOzR2O0A5EaYJo7c3dOtQ+VUx4jAAuR+jU+mvWp7rueJTWlXQ0w5voSJlx4WK3
+      7Ly0nDGMU5Jss/PbhXi8LG9JTJ4C4EBlVLYmO+oPFrSPO2+xYFp8QR7ncMg4M6UU
+      P+wv83MblPYUXxtJA2gxaacPUllostiqQPE25ApJZeTNSmXwBwcW+N04S0cCAwEA
+      AaNQME4wHQYDVR0OBBYEFD+dpJsTl/sdtG/V74cNZqRLqECTMB8GA1UdIwQYMBaA
+      FD+dpJsTl/sdtG/V74cNZqRLqECTMAwGA1UdEwQFMAMBAf8wDQYJKoZIhvcNAQEL
+      BQADggIBAIBfc7Kk4qnMx+klZ6PJvZ1enyPFvYzhhd6V8s/i2f2XH17NezLx6szU
+      lipnmaUVCHrGZ1xernR1YTHujT7BDLu8Y85nv5EB95bctGyzCrgeUwhP7TdfcLVq
+      ediFeUOpGdULBTIhmY1GsSaNHG8zGpfzJM81xfPd4SAJWOuMMJpqKUpyrTwgdG18
+      RsjjRE3M7cIPWoADlIibl1lNjHvg9Av8f5yPGzK8JMxY3fFvNloifi3OjIrgB2gA
+      ll344k1CbZGMCSZq5185nMofcezly5lH0bCw6sKpgrwcnppZK1E85FcjKpvfyS+q
+      wyCnHJwRzdWXyfJCJ8VSCBiryJug2DakzrlY615VWzDcurD2qGEXbpLzH+S+Q77J
+      YqVC74OtMy/k5EhgCjQyWqBoT5LS65Pc+gPTUmHATGRPVTb45gI9VCC/lOAagKUL
+      gRnrToLFB4h9YEQhpOHvYsbh9yQ6bpo0jGfbWJO2oUKK4mWEJEVvNYvyVMEVJvoy
+      LuIow2KbBIMQxFCjVS87Q+LfYznEs1m01ArvW70mZnvucT1Sh6Vt6idgYdF8FDRr
+      rLqPLG01j6fBg47snZgiNYw0OvOEp2fLfvaxEkywb2YJwriR9a2Fr3zlG2hFmlec
+      0johZ5hjPbzO/uGDgYLFsh8YxqHY5cgxiCVZXC65NLGv0G5rf9e0
       -----END CERTIFICATE-----
     haproxy_ssl_key: |
       -----BEGIN PRIVATE KEY-----
-      MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC71q/BbWy43hfq
-      FhExCfEIuF4TgNBVCWLDHkn8pbLAUmmsVxb8pBdr0INRNgbtuNhGC6th9zu0chzB
-      5bFr5O9Gma5jLYSQuzO17pgk+2fcszlnvBlDxQ0A6gQdx1PBgm/dsbMwvR1oVUiI
-      XCplJ4bunrmDuhA93uh1aFgqlNitk/P7iZDzcPQUAW2rhhPlszqCT6qbvFQp1lcR
-      IbxJTuURwxk7EkYd8tZerp70b3xUVTEFfGcmjTIxoAlKZ6uOoouxvhVgSs0eGDhr
-      fhxNo1qs6sXEST2OafWXkkJcErxU67RAnCSNDtRMg16SLTCb/PPs8ol9RpOr4rHM
-      6Z8vjiB3AgMBAAECggEBAJit+pJI9XSW4e1eHn8zy34BDkbgD3bveB2NQypfLRpy
-      Yn65E3ArmPYDuJmMRrl35CObXKT2pssXbhSVNU+z+GH0jPEEkJpr765Tz8tPpq6X
-      53NQS2DwjI9PqCTkXkoOUgtrY3GcZojluV1NPRCXvm+7CKPv2z/PLjgwpmmGL1F2
-      agiv2ZpvdupqfBpogoI2YMNL9XFXJfYtrrKKQELmx1BR+yForz/3sHxM7wpJLX57
-      VPWKd+mP+XFetVAG7rUxKmY6Bsq9LlEe/VO+qSvM3/bhnkZQQ9wMKMpGcs7yP3/I
-      XlDwEGm3z5fFjBiimekHMS9ODsZrBNzQqdUrk5/WWqECgYEA7AioCuZyql90uvsW
-      EXqoozKs1y2N5QCrOyKNrC60UZm5hbj+i0UTwVeNXUnWaYmL5XK7W3RTVUjyRmbO
-      RRt8SDob6p0qbqxpnVcedFD5Zulj3aKvFHvpbtQYTO2y3UpKzv3Snb/e6p2YFLfx
-      ehTpzJSQg9l2Sz8pzg93NrGAsQkCgYEAy7pbVlkSdyOVYlzB87MYCGGdkxNjnhZD
-      s1Rx96WeSPcuOidbF2la860hpOX8XrbeE+jMV3tnL35KDw5UlDWKeV783XQ1DqYO
-      17vS4g6R2RB/R4Pnts9u+0fZM96rTyEyXSNFAey9h9w9tP1yNQP/qSUeh8HF+6Fb
-      SmGQi7YgJX8CgYEAvEUvXPpyTimz3412Dd0r9HjwWvbQLvD4pEOsg8IBPPGEhQCJ
-      sScZWefvL5E9AJOhThTVE17XNbjo33UTZRZGbQpEyEAy33KRD9q0xQzt0sOpT9l7
-      E7i++xMciwgy2sZuo2rc+81XDwdDjosmhz11PCTonPLxo5WvT9kQO0UcpJkCgYEA
-      xjXPu5j5oDRcmNCKWyH51d2zQ27v0tTylT0pjLnz4CWtMiMsOwDj3oSpYRfpi/T6
-      5//tH4gOgmSqhS96FqBo02EZQBRZsqDZfAdfS1TFjZzBWMD65h+3aH8k0ZRos5om
-      t/sinpbIZ7Bd0QNs5Cu5x8U3iPl8OC9q9FksGuHdMN0CgYAzbWvJUPAlDdM6ZV83
-      B74AFFKH3KKsICrV9ybYDBYPGqb1X5u7DIxIWF30Xs6SAIhlNokTiyTv6CezMVxL
-      o0+e+F+2w9YMxEdYTM+eKX1+gp3M2uudtu2iYMAczprjch2qWB9/55Y/4cxvz+OZ
-      MJaUOF9O/fq9/THSI22Hg2N71g==
+      MIIJRAIBADANBgkqhkiG9w0BAQEFAASCCS4wggkqAgEAAoICAQCz6vz1kNLaepZz
+      apHADqM1rvsea12TtKzLFHRHLtW52R9pCYLOj0HPc/fnuKLHQQXuhAUoBBe+pBDY
+      SIl+spVdsyD3Q1q6J0Wm/0JWBuk8AAjdjYNgkiBFjTZvwkf9M1jcTvnhknNEu+AQ
+      ZE+w3ueGzW7J0X8Luj0BiJ1uIVU0zgDUItP/nti/Dpm3k8pcvVGK3aH2rrXzBJlM
+      y0BiUeoHjGjji+pd/lwfdHS9kzajderEXit+9oNl+yT4fuIhX4y9SC4NlWIFkhqx
+      zrPMQVtfRPU5pBdiTtryisubj3YOGQULoi8I+8KROWg/sqJdnuTD16mUMwxnY10k
+      2Bs+Jvf1VwJygOGy1+Ql/HzMI1rzRd/vQZthI0TyVsVPCf7Zb/Dn8Ky5lhUr2glH
+      NY0tfTKecEvXBCGKTVB5Nx6E8j7USoVuO3Ib5EsZTMigUQ8QGF/RB7tCb3yJlqds
+      C1cPF5Xf32d76CmuDYzHY5XOvvYXbCSPrsh72E7NHY7QDkRpgmjtzd061D5VTHiM
+      AC5H6NT6a9anuu54lNaVdDTDm+hImXHhYrfsvLScMYxTkmyz89uFeLwsb0lMngLg
+      QGVUtiY76g8WtI87b7FgWnxBHudwyDgzpRQ/7C/zcxuU9hRfG0kDaDFppw9SWWiy
+      2KpA8TbkCkll5M1KZfAHBxb43ThLRwIDAQABAoICAQCfQndAeD3tH25mJAN4Wnym
+      XIn1V1yyDtCVwzlaeV6+8C8Zr02WwsCifikHeSy97BTwGPTngxfxrREsIqly+Wm2
+      U4Xu2jRJa9IADRwPQnbaob03QLj2luLyLhntu7A1tWoHOfF/dz+JrDSezeysx+Ny
+      NA7JnyQyoVy3KtMQVXkzENcy8NFwCJAcLzRqh+wtQ3gW0DE6R1TQFVYN4CzR22ip
+      3eRK5+NB6JJrVY6w8MsAzrRNtn4SGOwfLbyAKvDIUegm9OmvJHhsLfRrSGlneMMF
+      Bel8aIA6iUrOP4YT4V3DBOqubZXtAc4s9wAMwndvH+OoaBK4GKf2LMKahqE21w/N
+      JEL37beC6jef4FvskfnglDCdbrlIEnUA3LnJGXOEQ0VfnWZZIBjaWKvS9imVfi81
+      FS86hCYzEgyLUylQYH3yyqtzwxKKFQQBSLG3eAcn+4lQUNWAPuUDoaZMZeRhDrRg
+      33NTkvdQqBDh3GlbP11VssGV12iIchKWn3lLBz7B1DdJTLYXaR9E1BcyR8VbKIwL
+      vgpFDsPnVcWNgXg7ZURcdH0Hon/1gB+DDuZ1mEF1TomumqM8ntSkz/IKU/JkyzL7
+      QsaBGptsPNOSEOp/SripksIRVYh7RngzP10IarswUWnHzGYw8xA8UGiW/WgbmSp8
+      48keh+mGcW5F4AGjMDQ0IQKCAQEA32RnEw446VcPrwG1T+gGUpAhD/WKIyL1fV+o
+      /UNYBKiW+TWtjW320WOA2k6UQ0Tb2NFMoiS/jEYyCWRMVyadDSYC8j2ZbhTRbZAV
+      8gZyU2+jJYcxCmXeQw3vmPDXi1SxG/lzOsfm06U9uVNyvAOuWyYH/MLCYWaDjm+2
+      YQg/3tiT8mTSBWXszU2AWCT9kPaeXRBsogJEILTiCadH6tSLpmhi/viFGcXEdAwm
+      Zwq92y3fb92L+WSqMB/DdCjo7IdTy2o6XUNmJJvPKT/BKDH5IYBkPj3zQxWYwsXc
+      +fSfRcs7w4lwYGHHjKKjY77PP181qzyBCgj5bigQ6VH5qWli/QKCAQEAzi4QA+/k
+      eAKMessL5Cv5DN2p3roFVj/yAOg5/ZErbRxr/x3747eqTcLmxgQjYsDtsetVyLLR
+      Y9L8x10KcGus4meQOC3MBIJmz95Sp8OUxdUsTZrZFbRAORiadCAuLdAJzUdLCXCE
+      12/+P2Z+W7I5jE+Z0bJEy0kw7RS1zVFN71rFnq5jIK8Bu4A9LGgZ+Dx1ZWYs3Zv8
+      s+cVVWF95Dt2zGi0mXsO4l46OZ6We+5EL85nnhHfWADlagbLOKqHKHaddrMbI+SG
+      IAh0+6lWlUpSRJO/aUPXWmovO5GcfB3veQX9xVIBP8DWiiulxKxaaB7cU2i+BEPt
+      JzUjnKIV8nKEkwKCAQEAsi/Q8+ctSBqUvQB80k799A9Y//TYCazR6f5KujFkXNrp
+      CcFiPOSQsnZPClMRehLL1cck/FSZoVdAhDNHnWCEdz9xrC2sW50pa945UwMHYDw1
+      AzMxz9xvjEbqbbD2DQIx/2FbI3DeUsWEVXYVl5jME5JjXp8vEygFGbFL5VwCLkvM
+      vtTinUGuwBfonuZqh53ftdXrANMT6o69mfufptWAyuyKwlwTNvqD+BjU7O4pgFG3
+      3u/1vakpAxfi/J3BJSHQmfmSsl+Xcu4BMSLUfK5XzPwveWJKzqDEZ+ARoiMYhEBW
+      3GKdi5OS6z+zWlWR1DeqhHrPZuS/qLk2vBUSMqqINQKCAQBnVkDiqEabO7PLC5+P
+      Idb2ctbj8dog63XQrJP8GdlpG3ipag7IiFJMHSZrEsHligrYRLo/GBjIboQRK/nC
+      dMU2yG9JKPL7Q5xiDOzidq1HJlvJHZY2QZx6wXEQSNy8S2vOPjBGr+V00QXeIvGr
+      5bzgLTlMF4xRUwK5oMqp+FkWYSlxKbg3Nl+o6VI/woFZoHu6caaE/9x9EpHntDBT
+      xtX5B3WVA09nd5C5Nln4DWiRiWL3n7+QLQrOxE7wvM93IVQ0nPo6WBw9S9/ODoZ9
+      1r06785c5Qq3n0bDFW0X7C0NPEp/rmU/3dfpcozn8PZy/xywlWu/WYgwQXry024q
+      kOkPAoIBAQCCTsE0K37laA+kM/SnR3pUhhe/AoSs8boKHOchu+oUMhXPd++upxVt
+      GMo4+R+WpkFwPWZaRNc4Zzx92difzkBIlp/UHB+l9jyeP112ViB2zO2qDtHhjCwa
+      m1091Rf8n2bGgFjmUHTJbhFGh+zubgYATuX6lLFO/Y+BI1rUHiOtStpSkmJBd8Bf
+      xNkQZQ1BvqFU8Nr21KNfa9mPyH1qESgUK1rhWbjzviSr+Nwvp3FhAuMqmOTvvoXC
+      KJibt1Zw78/qeTfmb/b9w9T/EK/YFi6uqq54gnZi/PNEAJ4V2rnDRhWIlpx45MEx
+      ls+jPZ3wGGEjYLAS2fVfG4EcZ1fWSBvF
       -----END PRIVATE KEY-----
     # haproxy_ssl_intermediate: |
       # -----BEGIN CERTIFICATE-----
@@ -130,7 +129,6 @@
     # You have to specify this, as the template has to be in your playbook
     haproxy_config_template_path: templates/etc/haproxy/haproxy.cfg.j2
 
-    # This role will alwyas generate the dhparam in /etc/haproxy/ssl/dhparam{{ haproxy_dhparam_size }}.pem
     haproxy_dhparam_size: 512
 
     # This variable defines how to manage the ssl certificate files required for haproxy. It needs
@@ -215,3 +213,53 @@
         mode: 0600
         validate: haproxy -f %s -c -q
       notify: restart haproxy
+
+
+# Preparations for running the tests
+# Install nginx and make it listen on localhost:8080 and make it respond with the host header
+# Also setup www.example.com and wwww.beispiel.de in /etc/hosts for being able to curl them
+- name: Converge
+  hosts: all
+  become: yes
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        enabled: yes
+        state: restarted
+        masked: no
+        force: yes
+        daemon_reload: yes
+  tasks:
+    - name: prevent nginx for starting after installation, as it fails to bind :80 which breaks apt
+      file:
+        state: link
+        src: /dev/null
+        dest: /etc/systemd/system/nginx.service
+    # - name: put www.example.com and www.beispiel.de into /etc/hosts
+    #   lineinfile:
+    #     dest: /etc/hosts
+    #     line: '127.0.0.1 www.beispiel.de www.example.com'
+    #     state: present
+    - name: install nginx and python-requests
+      apt:
+        pkg: "{{ haproxy_tests_package }}"
+        state: present
+      with_items:
+        - nginx
+        - python-requests
+      loop_control:
+        loop_var: haproxy_tests_package
+    - name: template /etc/nginx/sites-enabled/default
+      copy:
+        dest: /etc/nginx/sites-enabled/default
+        content: |
+          server {
+              server_name _;
+              listen 8080;
+              location / {
+                  return 200 $host ;
+                  add_header Content-Type text/plain;
+              }
+            }
+      notify: restart nginx

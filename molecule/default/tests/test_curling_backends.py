@@ -11,10 +11,12 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 
 def test_proxy_www_beispiel_de(host):
-    r = requests.get('https://www.beispiel.de/', verify=False)
-    assert r.content == 'www.beispiel.de'
+    headers = {'Host': 'www.beispiel.de'}
+    r = requests.get('https://127.0.0.1/', verify=False, headers=headers)
+    assert 'www.beispiel.de' in r.content
 
 
 def test_proxy_www_example_com(host):
-    r = requests.get('https://www.example.com/', verify=False)
-    assert r.content == 'www.example.com'
+    headers = {'Host': 'www.example.com'}
+    r = requests.get('https://127.0.0.1/', verify=False, headers=headers)
+    assert 'www.example.com' in r.content
