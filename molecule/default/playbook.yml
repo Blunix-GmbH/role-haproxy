@@ -232,6 +232,7 @@
         daemon_reload: yes
   tasks:
     - name: prevent nginx for starting after installation, as it fails to bind :80 which breaks apt
+      changed_when: no
       file:
         state: link
         src: /dev/null

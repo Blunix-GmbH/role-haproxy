@@ -24,5 +24,6 @@ clean:
 	find . -name \*.pyc -delete
 
 update:
+	pip install -U pip
 	pur -r requirements.txt
 	$(MAKE) install

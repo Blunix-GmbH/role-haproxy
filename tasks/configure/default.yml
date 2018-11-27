@@ -29,7 +29,9 @@
   command: "cat /var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
   register: haproxy_ssl_dhparam_out
   no_log: "{{ haproxy_no_log }}"
+  changed_when: no
 - name: load openssl dhparam into a variable
+  changed_when: no
   set_fact:
     haproxy_ssl_dhparam: "{{ haproxy_ssl_dhparam_out.stdout }}"
 
@@ -41,7 +43,9 @@
   register: haproxy_ssl_key_out
   no_log: "{{ haproxy_no_log }}"
   when: haproxy_ssl_managed_mode == 'concatinate'
+  changed_when: no
 - name: load ssl file key into a variable
+  changed_when: no
   set_fact:
     haproxy_ssl_key: "{{ haproxy_ssl_key_out.stdout }}"
   when: haproxy_ssl_managed_mode == 'concatinate'
@@ -51,7 +55,9 @@
   register: haproxy_ssl_crt_out
   no_log: "{{ haproxy_no_log }}"
   when: haproxy_ssl_managed_mode == 'concatinate'
+  changed_when: no
 - name: load ssl certificate file into a variable
+  changed_when: no
   set_fact:
     haproxy_ssl_crt: "{{ haproxy_ssl_crt_out.stdout }}"
   when: haproxy_ssl_managed_mode == 'concatinate'
@@ -61,11 +67,12 @@
   register: haproxy_ssl_intermediate_out
   no_log: "{{ haproxy_no_log }}"
   when: haproxy_ssl_intermediate_path != False and haproxy_ssl_managed_mode == 'concatinate'
+  changed_when: no
 - name: load ssl intermediate into a variable
+  changed_when: no
   set_fact:
     haproxy_ssl_intermediate: "{{ haproxy_ssl_intermediate_out.stdout }}"
   when: haproxy_ssl_intermediate_path != False and haproxy_ssl_managed_mode == 'concatinate'
-
 
 # template the concatinated ssl file from variables loaded from files or given in the play
 - name: template ssl certificate chain file
