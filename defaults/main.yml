@@ -1,0 +1,6 @@
+---
+# Dont manage creating ssl chain files by default
+haproxy_ssl_managed_mode: False
+haproxy_ssl_intermediate_path: False
+# Set no_log on all tasks dealing with certificates
+haproxy_no_log: False
