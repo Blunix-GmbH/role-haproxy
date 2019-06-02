@@ -2,7 +2,7 @@
 # Most minimal usage of role-haproxy - just installs the haproxy package and generate a dhparam
 - name: Converge
   hosts: all
-  become: yes
+  become: True
   roles:
     - role: role-haproxy
   vars:
@@ -16,7 +16,7 @@
 # Install haproxy and create a concatinated ssl chain file from variables to use it in haproxy.cfg
 - name: Converge
   hosts: all
-  become: yes
+  become: True
   roles:
     - role: role-haproxy
   vars:
@@ -120,7 +120,7 @@
 # self signed certificates) and setup a haproxy.cfg
 - name: Converge
   hosts: all
-  become: yes
+  become: True
   roles:
     - role: role-haproxy
   vars:
@@ -220,16 +220,16 @@
 # Also setup www.example.com and wwww.beispiel.de in /etc/hosts for being able to curl them
 - name: Converge
   hosts: all
-  become: yes
+  become: True
   handlers:
     - name: restart nginx
       systemd:
         name: nginx
-        enabled: yes
+        enabled: True
         state: restarted
         masked: no
-        force: yes
-        daemon_reload: yes
+        force: True
+        daemon_reload: True
   tasks:
     - name: prevent nginx for starting after installation, as it fails to bind :80 which breaks apt
       changed_when: no

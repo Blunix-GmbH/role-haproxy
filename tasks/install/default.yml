@@ -1,9 +1,23 @@
 ---
-- name: install haproxy related packages
+- name: configure haproxy.debian.net apt key
+  apt_key:
+    url: https://haproxy.debian.net/bernat.debian.org.gpg
+    id: 95A42FE8353525F9
+    state: "{{ haproxy_repository_state }}"
+
+- name: configure haproxy.debian.net repository
+  apt_repository:
+    repo: "deb http://haproxy.debian.net stretch-backports-{{ haproxy_version }} main"
+    state: "{{ haproxy_repository_state }}"
+    filename: haproxy
+    update_cache: True
+
+- name: install haproxy packages
   apt:
-    pkg: "{{ haproxy_package }}"
+    pkg:
+      # use latest available version of haproxy
+      - "haproxy=*"
+      - hatop
+      - haveged
     state: present
-    update_cache: no
-  with_items: ['haproxy', 'hatop', 'haveged']
-  loop_control:
-    loop_var: haproxy_package
+    update_cache: True
