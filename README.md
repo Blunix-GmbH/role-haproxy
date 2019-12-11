@@ -9,8 +9,6 @@ What the role can do for you however is concatinate your ssl certificate. Haprox
 - Letsencrypt (will have to run a post hook to concatinate the files and restart haproxy)
 - Locally generating snakeoil certificates (concatinate the files and restart haproxy)
 
-The role will always generate the dhparam for you.
-
 To be able to work with those usecases, you can let the role:
 - concatinate files on the server
 - do nothing

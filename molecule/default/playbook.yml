@@ -1,5 +1,5 @@
 ---
-# Most minimal usage of role-haproxy - just installs the haproxy package and generate a dhparam
+# Most minimal usage of role-haproxy - just installs the haproxy package
 - name: Converge
   hosts: all
   become: True
@@ -7,10 +7,7 @@
     - role: role-haproxy
   vars:
     # You will have to setup your own magic to make the certificate available for your haproxy.cfg
-    # This will however still create a dhparam (because you need one in any cases)
     haproxy_ssl_managed_mode: False
-    # This role will alwyas generate the dhparam in /etc/haproxy/ssl/dhparam{{ haproxy_dhparam_size }}.pem
-    haproxy_dhparam_size: 512
 
 
 # Install haproxy and create a concatinated ssl chain file from variables to use it in haproxy.cfg
@@ -20,7 +17,7 @@
   roles:
     - role: role-haproxy
   vars:
-    haproxy_dhparam_size: 512
+    haproxy_ssl_dhparam_path: /etc/ssl/private/dhparam.pem
     haproxy_ssl_managed_mode: variables
     # All variables below are required for haproxy_ssl_managed_mode: variables
     haproxy_ssl_chain_filename: www.beispiel.de
@@ -115,6 +112,14 @@
       # -----END CERTIFICATE-----
     haproxy_ssl_intermediate: False
 
+  tasks:
+    - name: create openssl dhparam (may take a while)
+      command: "openssl dhparam -outform PEM -out /etc/ssl/private/dhparam.pem 512"
+      args:
+        creates: "/etc/ssl/private/dhparam.pem"
+      no_log: "{{ haproxy_no_log }}"
+
+
 
 # Install haproxy, create a concatinated chain file from files present on the server (generated
 # self signed certificates) and setup a haproxy.cfg
@@ -128,8 +133,6 @@
     # Location of your haproxy.cfg.j2 template file
     # You have to specify this, as the template has to be in your playbook
     haproxy_config_template_path: templates/etc/haproxy/haproxy.cfg.j2
-
-    haproxy_dhparam_size: 512
 
     # This variable defines how to manage the ssl certificate files required for haproxy. It needs
     # to have a key, certificate, intermediates and dhparam concatinated into one file. Options:
@@ -150,6 +153,7 @@
     haproxy_ssl_key_path: /etc/ssl/private/snakeoil.key
     # Omit intermediates in the concatinated file - only works for haproxy_ssl_intermediate_path
     haproxy_ssl_intermediate_path: False
+    haproxy_ssl_dhparam_path: /etc/ssl/private/dhparam.pem
 
     # Some variables custom to the example haproxy.cfg.j2 template
     # A list of error files
@@ -182,6 +186,14 @@
         privatekey_path: /etc/ssl/private/snakeoil.key
         csr_path: /etc/ssl/private/snakeoil.csr
         provider: selfsigned
+
+  tasks:
+    - name: create openssl dhparam (may take a while)
+      command: "openssl dhparam -outform PEM -out /etc/ssl/private/dhparam.pem 512"
+      args:
+        creates: "/etc/ssl/private/dhparam.pem"
+      no_log: "{{ haproxy_no_log }}"
+
 
   post_tasks:
 

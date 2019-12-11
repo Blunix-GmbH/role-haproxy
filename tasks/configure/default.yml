@@ -6,27 +6,8 @@
     group: haproxy
     mode: 0700
 
-# TODO bugs around, says it cant find the module, https://docs.ansible.com/ansible/devel/modules/openssl_dhparam_module.html
-#- name: create openssl dhparam (may take a while)
-#  openssl_dhparam:
-#    path: "/var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
-#    size: "{{ haproxy_dhparam_size }}"
-- name: create openssl dhparam (may take a while)
-  command: "openssl dhparam -outform PEM -out /var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem {{ haproxy_dhparam_size }}"
-  args:
-    creates: "/var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
-  no_log: "{{ haproxy_no_log }}"
-
-- name: set permissions on dhparam
-  file:
-    state: file
-    path: "/var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
-    owner: haproxy
-    group: haproxy
-    mode: 0400
-
 - name: load openssl dhparam into a variable
-  command: "cat /var/lib/haproxy/ssl/dh{{ haproxy_dhparam_size }}.pem"
+  command: "cat {{ haproxy_ssl_dhparam_path }}"
   register: haproxy_ssl_dhparam_out
   no_log: "{{ haproxy_no_log }}"
   changed_when: no
