@@ -1,70 +1,71 @@
 global
-	log /dev/log	local0
-	log /dev/log	local1 notice
-	chroot /var/lib/haproxy
-	stats socket /run/haproxy/admin.sock mode 660 level admin
-	stats timeout 30s
-	user haproxy
-	group haproxy
-	daemon
-  maxconn 2048
-	ca-base /etc/ssl/certs
-	crt-base /etc/ssl/private
-  # From https://mozilla.github.io/server-side-tls/ssl-config-generator/
-  tune.ssl.default-dh-param 2048
-  ssl-default-bind-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-bind-options no-sslv3 no-tls-tickets
-  ssl-default-server-ciphers ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS
-  ssl-default-server-options no-sslv3 no-tls-tickets
-
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 2048
+    ca-base /etc/ssl/certs
+    crt-base /etc/ssl/private
+    # From https://mozilla.github.io/server-side-tls/ssl-config-generator/
+    tune.ssl.default-dh-param 4096
+    ssl-default-bind-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+    ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-bind-options prefer-client-ciphers no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
+    ssl-default-server-ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384
+    ssl-default-server-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256
+    ssl-default-server-options no-sslv3 no-tlsv10 no-tlsv11 no-tls-tickets
+    ssl-dh-param-file {{ selfsigned_certificate_dhparam_path }}
+    
 
 defaults
-  log global
-  mode  http
-  option  httplog
-  option  dontlognull
-	log	global
-	mode	http
-	option dontlognull
-  timeout connect 5000
-  timeout client 50000
-  timeout server 50000
+    log global
+    mode  http
+    option  httplog
+    option  dontlognull
+    log	global
+    mode	http
+    option dontlognull
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
 {% for haproxy_errorfile in haproxy_errorfiles %}
-	errorfile {{ haproxy_errorfile['code'] }} {{ haproxy_errorfile['path'] }}
+    errorfile {{ haproxy_errorfile }} /etc/haproxy/errors/{{ haproxy_errorfile }}.http
 {% endfor %}
 
 
 frontend http
-  mode    http
-  bind    :80
-  bind    :443 ssl crt /var/lib/haproxy/ssl/www.example.com.pem crt /var/lib/haproxy/ssl/www.beispiel.de.pem
-  redirect scheme https code 301 if !{ ssl_fc }
-  http-response set-header Strict-Transport-Security max-age=15768000
-  default_backend www_beispiel_de
-  # Redirect everything to https
-  redirect scheme https code 301 if !{ ssl_fc }
-  # Define hosts
-  acl host_www_beispiel_de hdr(host) -i www.beispiel.de
-  acl host_www_example_com hdr(host) -i www.example.com
-  ## Determine which host to use
-  use_backend www_beispiel_de if host_www_beispiel_de
-  use_backend www_example_com if host_www_example_com
+    mode http
+    bind :80
+    bind :443 ssl crt /var/lib/haproxy/ssl/www.example.com.pem alpn h2,http/1.1
+    redirect scheme https code 301 if !{ ssl_fc }
+    http-response set-header Strict-Transport-Security max-age=63072000
+    default_backend www_beispiel_de
+    # Define hosts
+    acl host_www_beispiel_de hdr(host) -i www.beispiel.de
+    acl host_www_example_com hdr(host) -i www.example.com
+    ## Determine which host to use
+    use_backend www_beispiel_de if host_www_beispiel_de
+    use_backend www_example_com if host_www_example_com
 
 
 backend www_beispiel_de
-  balance leastconn
-  option httpclose
-  option forwardfor
-  cookie JSESSIONID prefix
-  option httpchk HEAD / HTTP/1.1\r\nHost:\ www.beispiel.de\r\nUser-agent:\ haproxy0
-  http-check expect status 200
-  server web0 127.0.0.1:8080 cookie A check
+    balance leastconn
+    option httpclose
+    option forwardfor
+    cookie JSESSIONID prefix
+    option httpchk HEAD / HTTP/1.1\r\nHost:\ www.beispiel.de\r\nUser-agent:\ haproxy0
+    http-check expect status 200
+    server web0 127.0.0.1:8080 cookie A check
 
 backend www_example_com
-  balance leastconn
-  option httpclose
-  option forwardfor
-  cookie JSESSIONID prefix
-	option httpchk HEAD /login HTTP/1.1\r\nHost:\ www.example.com\r\nUser-agent:\ haproxy0
-  http-check expect status 200 string pong
-  server back0 127.0.0.1:8080 cookie A check
+    balance leastconn
+    option httpclose
+    option forwardfor
+    cookie JSESSIONID prefix
+    option httpchk HEAD /login HTTP/1.1\r\nHost:\ www.example.com\r\nUser-agent:\ haproxy0
+    http-check expect status 200 string pong
+    server back0 127.0.0.1:8080 cookie A check

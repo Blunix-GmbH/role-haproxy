@@ -1,11 +1,9 @@
----
 # Dont manage creating ssl chain files by default
 haproxy_ssl_managed_mode: False
 haproxy_ssl_intermediate_path: False
+
 # Set no_log on all tasks dealing with certificates
 haproxy_no_log: False
 
-# wether to configure haproxy.debian.net repo (present or absent)
-haproxy_repository_state: absent
-# Repo version available https://haproxy.debian.net/#?distribution=Debian&release=stretch&version=1.9
-haproxy_version: 1.9
+# List of error files
+haproxy_errorfiles: []

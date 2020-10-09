@@ -1,9 +1,11 @@
-- name: reload haproxy
-  service:
-    name: haproxy
-    state: reloaded
+- name: validate haproxy.cfg
+  command: haproxy -f /etc/haproxy/haproxy.cfg -c -q
+  listen: restart haproxy
 
 - name: restart haproxy
-  service:
+  systemd:
     name: haproxy
     state: restarted
+    enabled: True
+  listen: restart haproxy
+

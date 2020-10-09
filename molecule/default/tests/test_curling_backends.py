@@ -11,11 +11,11 @@ testinfra_hosts = testinfra.utils.ansible_runner.AnsibleRunner(
 
 def test_proxy_www_beispiel_de(host):
     r = host.run('curl -k https://127.0.0.1 --header "Host: www.beispiel.de"')
-    print r.stdout
+    print(r.stdout)
     assert 'www.beispiel.de' == r.stdout
 
 
 def test_proxy_www_example_com(host):
     r = host.run('curl -k https://127.0.0.1 --header "Host: www.example.com"')
-    print r.stdout
+    print(r.stdout)
     assert 'www.example.com' == r.stdout

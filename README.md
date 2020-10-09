@@ -1,41 +1,26 @@
-# Ansible Role apache2
+# blunix_role-haproxy
+This Ansible role installs and configures haproxy
 
-This role installs and configures haproxy.
-
-Haproxys configuration itself is mostly inside `/etc/haproxy/haproxy.cfg`, which is not very practical to abstract / template, so you will have to template it using a custom task in your playbook.
-
-What the role can do for you however is concatinate your ssl certificate. Haproxy needs the certificate, key, intermediates and dhparam all in one file, so the role can do that for you. There are three ssl scenarios:
-- A bought certificate (specify the certificate, key and intermediates in the vars)
-- Letsencrypt (will have to run a post hook to concatinate the files and restart haproxy)
-- Locally generating snakeoil certificates (concatinate the files and restart haproxy)
-
-To be able to work with those usecases, you can let the role:
-- concatinate files on the server
-- do nothing
-
-How you can use this is explained in the documented example playbook `molecule/default/playbook.yml`.
-
-
-# Example play
-
-An example play can be found in `molecule/default/playbook.yml`.
-
-# License
-
-Apache-2.0
+This role is part of the Blunix hosting stack. Learn how to use it at <a href="https://man.blunix.com/" target="_blank">man.blunix.com</a>.
 
 # Author Information
-
-Service and support for orchestrated hosting environments,
-continuous integration/deployment/delivery and various Linux
-and open-source technology stacks are available from:
-
-```
 Blunix GmbH - Consulting for Linux Hosting 24/7
-Glogauer Straße 21
-10999 Berlin - Germany
 
-Web: www.blunix.org
-Email: service[at]blunix.org
-Phone: (+49) 30 / 12 08 39 90
+Blunix GmbH provides 24/7 support with Service Level Agreements for Debian Linux based hosting environments which are automated with Ansible.
+
 ```
+Blunix GmbH
+Glogauer Straße 21
+10999 Berlin
+Germany
+
+Website: https://www.blunix.com
+E-Mail:  contact@blunix.com
+gpg key: https://www.blunix.com/contact-blunix-com-gpg-key
+Signal:  +49 176 123 456 78
+```
+
+# License
+Apache-2.0
+
+Please refer to the LICENSE file in the root of this repository.

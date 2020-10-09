@@ -1,0 +1,4 @@
+- src: git@git.blunix.com:ansible-roles/role-selfsigned-certificate.git
+  name: blunix_role-selfsigned-certificate_11.0.0
+  scm: git
+  version: 11.0.0

@@ -1,20 +1,120 @@
----
-- name: include distro installer
-  include_tasks: '{{ distro_installer }}'
-  with_first_found:
-    - install/{{ ansible_distribution }}.{{ ansible_lsb.codename }}.yml
-    - install/{{ ansible_distribution }}.yml
-    - install/default.yml
-  loop_control:
-    loop_var: distro_installer
+- name: install haproxy
+  apt:
+    name:
+      - haproxy
+      - hatop
+      - haveged
+    state: present
 
-- name: include distro configurator
-  include_tasks: "{{ distro_configurator }}"
-  with_first_found:
-    - "configure/{{ ansible_distribution }}.{{ ansible_lsb.codename }}.yml"
-    - "configure/{{ ansible_distribution }}.yml"
-    - "configure/default.yml"
+- name: create directory for error files
+  file:
+    state: directory
+    path: /etc/haproxy/errors/
+    owner: www-data
+    group: www-data
+    mode: 0750
+
+- name: template /etc/haproxy/haproxy.cfg
+  template:
+    src: "templates/etc/haproxy/haproxy.cfg.j2"
+    dest: "/etc/haproxy/haproxy.cfg"
+    owner: root
+    group: root
+    mode: 0600
+  notify: restart haproxy
+
+- name: create haproxy directories
+  file:
+    state: directory
+    path: "/var/lib/haproxy/{{ haproxy_directory }}"
+    owner: haproxy
+    group: haproxy
+    mode: 0700
+  with_items:
+    - ssl
+    - errors
   loop_control:
-    loop_var: distro_configurator
-  tags:
-    - configure
+    loop_var: haproxy_directory
+
+- name: manage error files
+  template:
+    src: "templates/etc/haproxy/errors/{{ haproxy_errorfile }}.http.j2"
+    dest: "/etc/haproxy/errors/{{ haproxy_errorfile }}.http"
+    owner: www-data
+    group: www-data
+    mode: 0640
+  with_items: "{{ haproxy_errorfiles }}"
+  loop_control:
+    loop_var: haproxy_errorfile
+  when: haproxy_errorfiles != []
+
+
+
+- name: cat dhparam
+  command: "cat {{ haproxy_ssl_dhparam_path }}"
+  register: haproxy_ssl_dhparam_out
+  no_log: "{{ haproxy_no_log }}"
+  changed_when: False
+  ignore_errors: "{{ ansible_check_mode }}"
+- name: load dhparam into a variable
+  changed_when: False
+  set_fact:
+    haproxy_ssl_dhparam: "{{ haproxy_ssl_dhparam_out.stdout }}"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+
+# Tasks to execute when haproxy_ssl_managed_mode: concatinate
+- name: cat ssl key
+  command: "cat {{ haproxy_ssl_key_path }}"
+  register: haproxy_ssl_key_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_managed_mode == "concatinate"
+  changed_when: False
+  ignore_errors: "{{ ansible_check_mode }}"
+- name: load ssl key into a variable
+  changed_when: False
+  set_fact:
+    haproxy_ssl_key: "{{ haproxy_ssl_key_out.stdout }}"
+  when: haproxy_ssl_managed_mode == "concatinate"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: cat ssl certificate
+  command: "cat {{ haproxy_ssl_crt_path }}"
+  register: haproxy_ssl_crt_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_managed_mode == "concatinate"
+  changed_when: False
+  ignore_errors: "{{ ansible_check_mode }}"
+- name: load ssl certificate into a variable
+  changed_when: False
+  set_fact:
+    haproxy_ssl_crt: "{{ haproxy_ssl_crt_out.stdout }}"
+  when: haproxy_ssl_managed_mode == "concatinate"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+- name: cat ssl intermediate
+  command: "cat {{ haproxy_ssl_intermediate_path }}"
+  register: haproxy_ssl_intermediate_out
+  no_log: "{{ haproxy_no_log }}"
+  when: haproxy_ssl_intermediate_path and haproxy_ssl_managed_mode == "concatinate"
+  changed_when: False
+  ignore_errors: "{{ ansible_check_mode }}"
+- name: load ssl intermediate into a variable
+  changed_when: False
+  set_fact:
+    haproxy_ssl_intermediate: "{{ haproxy_ssl_intermediate_out.stdout }}"
+  when: haproxy_ssl_intermediate_path and haproxy_ssl_managed_mode == "concatinate"
+  ignore_errors: "{{ ansible_check_mode }}"
+
+
+- name: template ssl certificate chain
+  template:
+    src: "templates/var/lib/haproxy/ssl/certificate-template.pem.j2"
+    dest: "/var/lib/haproxy/ssl/{{ haproxy_ssl_chain_filename }}.pem"
+    owner: haproxy
+    group: haproxy
+    mode: 0400
+  notify: restart haproxy
+  no_log: "{{ haproxy_no_log }}"
+  ignore_errors: "{{ ansible_check_mode }}"
+  when: haproxy_ssl_managed_mode is defined
